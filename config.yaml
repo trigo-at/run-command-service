@@ -1,0 +1,11 @@
+# Example configuration for Run Command Service
+
+# The command to be executed when the /execute endpoint is called
+# This command will echo a greeting and the current date
+# It also demonstrates the use of environment variables
+command: |
+  asdgasdg
+  echo "Hello from Run Command Service!"
+  echo "Current date: $(date)"
+  echo "User running the command: $USER"
+  echo "Custom environment variable: $CUSTOM_VAR"
