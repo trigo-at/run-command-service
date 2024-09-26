@@ -28,6 +28,8 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
     - [Running Tests](#running-tests)
     - [Makefile](#makefile)
   - [Troubleshooting](#troubleshooting)
+  - [License](#license)
+    - [MIT License Summary](#mit-license-summary)
 
 ## Features
 
@@ -221,3 +223,17 @@ A Makefile is provided for common development tasks:
 - Ensure that the configured command in `config.yaml` is valid and can be executed by the specified shell.
 
 For more information or to report issues, please visit the [GitHub repository](https://github.com/trigo-at/run-command-service).
+
+
+## License
+
+Run Command Service is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
+### MIT License Summary
+
+- You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.
+- You must include the copyright notice and the permission notice in all copies or substantial portions of the software.
+- The software is provided "as is", without warranty of any kind.
+
+For the full license text, please see the [LICENSE](LICENSE) file in the repository.
+
