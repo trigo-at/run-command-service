@@ -38,7 +38,7 @@ jobs:
 
     - name: Get tag
       id: get_tag
-      run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      run: echo "TAG_T=${GITHUB_REF#refs/tags/};TAG=${TAG_T#refs/heads/}" >> $GITHUB_OUTPUT
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
