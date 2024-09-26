@@ -142,8 +142,9 @@ func readyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Run Command Service is running")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
 // executeHandler handles the POST /execute endpoint
@@ -205,7 +206,17 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Send JSON response with just the exit code
+	// Prepare the JSON response
+	response := map[string]int{"exit_code": exitCode}
+
+	// Set the appropriate status code based on the exit code
+	if exitCode != 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
+	// Send JSON response with the exit code
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{"exit_code": exitCode})
+	json.NewEncoder(w).Encode(response)
 }

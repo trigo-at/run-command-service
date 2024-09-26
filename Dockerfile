@@ -38,7 +38,6 @@ EXPOSE 8080
 CMD ["./run-command-service"]
 
 # Set environment variables
-ENV CONFIG_FILE_PATH=/root/config.yaml
-ENV EXECUTE_SECRET=""
+ENV CONFIG_FILE_PATH=config.yaml
 ENV SHELL_PATH=/bin/bash
 ENV LISTEN_PORT=8080
