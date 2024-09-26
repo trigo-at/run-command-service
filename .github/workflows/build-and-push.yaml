@@ -38,11 +38,11 @@ jobs:
 
     - name: Get tag t
       id: get_tag_t
-      run: echo "TAG_T=${GITHUB_REF#refs/tags/};TAG=${TAG_T#refs/heads/}" >> $GITHUB_OUTPUT
+      run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
     - name: Get tag
       id: get_tag
-      run: echo "TAG_NAME=${steps.get_tag.outputs.TAG#refs/heads/}" >> $GITHUB_ENV
+      run: echo "TAG=${steps.get_tag_t.outputs.TAG#refs/heads/}" >> $GITHUB_OUTPUT
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
@@ -50,7 +50,7 @@ jobs:
         context: .
         push: true
         tags: |
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG_NAME }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get_tag.outputs.TAG }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
