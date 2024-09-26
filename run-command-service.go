@@ -17,7 +17,8 @@ import (
 
 // Config struct to hold the command configuration
 type Config struct {
-	Command string `yaml:"command"`
+	Command         string `yaml:"command"`
+	RunInBackground bool   `yaml:"runInBackground"`
 }
 
 var (
@@ -26,6 +27,7 @@ var (
 	shellPath     string
 	listenPort    string
 	mu            sync.Mutex
+	isRunning     bool
 )
 
 func main() {
@@ -164,6 +166,13 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	// Check if a background process is already running
+	if isRunning && config.RunInBackground {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]string{"status": "job still running in background"})
+		return
+	}
+
 	// Expand environment variables in the command
 	expandedCommand := os.ExpandEnv(config.Command)
 
@@ -189,15 +198,31 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Copy stdout and stderr to the server's stdout/stderr
+	// If running in background, return immediately
+	if config.RunInBackground {
+		isRunning = true
+		go func() {
+			io.Copy(os.Stdout, stdout)
+			io.Copy(os.Stderr, stderr)
+			cmd.Wait()
+			mu.Lock()
+			isRunning = false
+			mu.Unlock()
+		}()
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "Process spawned successfully"})
+		return
+	}
+
+	// For foreground execution, wait for the command to finish
 	go io.Copy(os.Stdout, stdout)
 	go io.Copy(os.Stderr, stderr)
 
-	// Wait for the command to finish
 	err = cmd.Wait()
 
 	// Prepare the response
-	var exitCode int
+	exitCode := 0
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			exitCode = exitError.ExitCode()
@@ -205,9 +230,6 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 			exitCode = 1 // Generic error code if we can't determine the actual exit code
 		}
 	}
-
-	// Prepare the JSON response
-	response := map[string]int{"exit_code": exitCode}
 
 	// Set the appropriate status code based on the exit code
 	if exitCode != 0 {
@@ -217,6 +239,5 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send JSON response with the exit code
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(map[string]int{"exit_code": exitCode})
 }

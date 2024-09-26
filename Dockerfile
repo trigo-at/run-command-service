@@ -1,8 +1,11 @@
-# Start from the official Golang image
+# Stage 1: Build and test
 FROM golang:1.20-alpine AS builder
 
 # Set the working directory
 WORKDIR /app
+
+# Install necessary build tools
+RUN apk add --no-cache git
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
@@ -13,10 +16,13 @@ RUN go mod download
 # Copy the source code
 COPY *.go ./
 
+# Run unit tests
+RUN go test -v ./...
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o run-command-service .
 
-# Start a new stage from scratch
+# Stage 2: Create the final lightweight image
 FROM alpine:latest  
 
 # Install bash
@@ -25,7 +31,7 @@ RUN apk add --no-cache bash
 # Set the working directory
 WORKDIR /root/
 
-# Copy the pre-built binary file from the previous stage
+# Copy only the built binary from the previous stage
 COPY --from=builder /app/run-command-service .
 
 # Copy the config file

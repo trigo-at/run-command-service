@@ -129,8 +129,11 @@ command: |
   echo "Hello from Run Command Service!"
   echo "Current date: $(date)"
   echo "Custom environment variable: $CUSTOM_VAR"
+runInBackground: false
 ```
 
+* `command`: The shell command to be executed.
+* `runInBackground`: If set to true, the command will be spawned as a background process.
 ## Usage
 
 ### Starting the Service

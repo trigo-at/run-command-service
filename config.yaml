@@ -5,7 +5,14 @@
 # It also demonstrates the use of environment variables
 command: |
   echo "Hello from Run Command Service!"
+  sleep 3
   echo "Current date: $(date)"
+  sleep 3
   echo "User running the command: $USER"
+  sleep 3
+  echo "Done"
+
+# If set to true, the command will be spawned as a background process
+runInBackground: true
 
  
