@@ -2,8 +2,10 @@ name: Build and Push Docker Image
 
 on:
   push:
+    tags:
+      - 'v*'
     branches:
-      - '*'  # This will trigger the workflow on push to any branch
+      - 'main'  # This will trigger the workflow on push to any branch
 
 env:
   REGISTRY: ghcr.io
