@@ -7,5 +7,5 @@ command: |
   echo "Hello from Run Command Service!"
   echo "Current date: $(date)"
   echo "User running the command: $USER"
-  echo "Custom environment variable: $CUSTOM_VAR"
+
  
