@@ -1,5 +1,5 @@
 # Stage 1: Build and test
-FROM golang:1.20-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
 
 # Set the working directory
 WORKDIR /app
@@ -20,10 +20,11 @@ COPY *.go ./
 RUN go test -v ./...
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o run-command-service .
+ARG TARGETOS TARGETARCH
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o run-command-service .
 
 # Stage 2: Create the final lightweight image
-FROM alpine:latest  
+FROM --platform=$TARGETPLATFORM alpine:latest
 
 # Install bash
 RUN apk add --no-cache bash
