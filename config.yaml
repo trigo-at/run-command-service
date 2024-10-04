@@ -14,5 +14,6 @@ command: |
 
 # If set to true, the command will be spawned as a background process
 runInBackground: true
+runOnce: false
 
  

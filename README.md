@@ -9,10 +9,6 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
   - [Features](#features)
   - [Installation](#installation)
     - [Prerequisites](#prerequisites)
-  - [Run Docker Image](#run-docker-image)
-    - [Pulling the Pre-built Image](#pulling-the-pre-built-image)
-    - [Running the Container](#running-the-container)
-    - [Building the Docker Image Locally](#building-the-docker-image-locally)
     - [Building from Source](#building-from-source)
   - [Configuration](#configuration)
     - [Environment Variables](#environment-variables)
@@ -23,6 +19,9 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
       - [GET /ready](#get-ready)
       - [POST /execute](#post-execute)
   - [Docker Support](#docker-support)
+    - [Building the Docker Image](#building-the-docker-image)
+    - [Pulling the Pre-built Image](#pulling-the-pre-built-image)
+    - [Running the Container](#running-the-container)
   - [Security Considerations](#security-considerations)
   - [Development](#development)
     - [Running Tests](#running-tests)
@@ -39,6 +38,8 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
 - Docker support for easy deployment
 - Customizable shell and listening port
 - Returns command exit codes for easy integration
+- Option to run commands in the background
+- Run-once mode for single command execution
 
 ## Installation
 
@@ -46,53 +47,6 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
 
 - Go 1.20 or later
 - Docker (optional, for containerized deployment)
-
-## Run Docker Image
-
-You can run the Run Command Service using a pre-built Docker image from the GitHub Container Registry (ghcr.io) or build your own image.
-
-### Pulling the Pre-built Image
-
-To pull the latest version of the Docker image:
-
-```bash
-docker pull ghcr.io/trig-at/run-command-service:latest
-```
-You can also pull a specific version or branch of the service by changing the tag:
-
-```bash
-docker pull ghcr.io/trig-at/run-command-service:v1.0.0
-# or
-docker pull ghcr.io/trig-at/run-command-service:main
-```
-
-### Running the Container
-
-After pulling the image, you can run it with:
-
-```bash
-docker run -p 8080:8080 \
-  -e EXECUTE_SECRET=your_secret_here \
-  -e CONFIG_FILE_PATH=/app/config.yaml \
-  -v /path/to/your/config.yaml:/app/config.yaml \
-  ghcr.io/trig-at/run-command-service:latest
-```
-
-Make sure to replace `/path/to/your/config.yaml` with the actual path to your configuration file on the host machine.
-
-### Building the Docker Image Locally
-
-If you prefer to build the Docker image yourself:
-
-1. Build the Docker image:
-   ```
-   docker build -t run-command-service .
-   ```
-
-2. Run the container:
-   ```
-   docker run -p 8080:8080 -e EXECUTE_SECRET=your_secret_here run-command-service
-   ```
 
 ### Building from Source
 
@@ -120,7 +74,7 @@ The service can be configured using the following environment variables:
 
 ### Configuration File
 
-The service uses a YAML configuration file to define the command to be executed. By default, it looks for `config.yaml` in the same directory as the executable.
+The service uses a YAML configuration file to define the command to be executed and its execution mode. By default, it looks for `config.yaml` in the same directory as the executable.
 
 Example `config.yaml`:
 
@@ -130,10 +84,15 @@ command: |
   echo "Current date: $(date)"
   echo "Custom environment variable: $CUSTOM_VAR"
 runInBackground: false
+runOnce: false
 ```
 
-* `command`: The shell command to be executed.
-* `runInBackground`: If set to true, the command will be spawned as a background process.
+- `command`: The shell command to be executed.
+- `runInBackground`: If set to `true`, the command will be spawned as a background process.
+- `runOnce`: If set to `true`, the service will execute the command once at startup and exit, using the command's exit code as its own.
+
+Note: `runInBackground` and `runOnce` cannot both be set to `true` as they are mutually exclusive options.
+
 ## Usage
 
 ### Starting the Service
@@ -169,27 +128,79 @@ The service will start and display the configured command without executing it.
 - **Headers**:
   - `x-secret`: The secret key for authentication (must match `EXECUTE_SECRET`)
 - **Response**:
-  - Status Code: 
-    - 200 OK if the command executed successfully (exit code 0)
-    - 500 Internal Server Error if the command failed (non-zero exit code)
-  - Body: JSON object containing the exit code
-    ```json
-    {"exit_code": 0}
-    ```
+  - For foreground execution (`runInBackground: false`):
+    - Status Code: 
+      - 200 OK if the command executed successfully (exit code 0)
+      - 500 Internal Server Error if the command failed (non-zero exit code)
+    - Body: JSON object containing the exit code
+      ```json
+      {"exit_code": 0}
+      ```
+  - For background execution (`runInBackground: true`):
+    - Status Code: 
+      - 200 OK if the process was successfully spawned
+      - 409 Conflict if a background process is already running
+    - Body: JSON object indicating the status
+      ```json
+      {"status": "Process spawned successfully"}
+      ```
+      or
+      ```json
+      {"status": "job still running in background"}
+      ```
 
 ## Docker Support
 
-To build and run the service using Docker:
+You can run the Run Command Service using a pre-built Docker image from the GitHub Container Registry (ghcr.io) or build your own image.
 
-1. Build the Docker image:
-   ```
-   docker build -t run-command-service .
-   ```
+### Building the Docker Image
 
-2. Run the container:
-   ```
-   docker run -p 8080:8080 -e EXECUTE_SECRET=your_secret_here run-command-service
-   ```
+The Dockerfile uses a multi-stage build process that includes running unit tests:
+
+1. The first stage builds the application and runs unit tests.
+2. The second stage creates a lean production image with only the necessary components.
+
+To build the Docker image:
+
+```bash
+docker build -t run-command-service .
+```
+
+This process ensures that:
+- Unit tests are run as part of the build process.
+- The final image only contains the production binary, not the test code.
+
+### Pulling the Pre-built Image
+
+To pull the latest version of the Docker image:
+
+```bash
+docker pull ghcr.io/yourusername/run-command-service:latest
+```
+
+Replace `yourusername` with the actual GitHub username or organization where the repository is hosted.
+
+You can also pull a specific version or branch of the service by changing the tag:
+
+```bash
+docker pull ghcr.io/yourusername/run-command-service:v1.0.0
+# or
+docker pull ghcr.io/yourusername/run-command-service:main
+```
+
+### Running the Container
+
+After pulling the image, you can run it with:
+
+```bash
+docker run -p 8080:8080 \
+  -e EXECUTE_SECRET=your_secret_here \
+  -e CONFIG_FILE_PATH=/app/config.yaml \
+  -v /path/to/your/config.yaml:/app/config.yaml \
+  ghcr.io/yourusername/run-command-service:latest
+```
+
+Make sure to replace `/path/to/your/config.yaml` with the actual path to your configuration file on the host machine.
 
 ## Security Considerations
 
@@ -224,14 +235,13 @@ A Makefile is provided for common development tasks:
 - Verify that the `config.yaml` file is in the correct location and properly formatted.
 - Check the logs for any error messages or unexpected behavior.
 - Ensure that the configured command in `config.yaml` is valid and can be executed by the specified shell.
+- If both `runInBackground` and `runOnce` are set to `true` in the configuration, the service will return an error as these options are mutually exclusive.
 
-For more information or to report issues, please visit the [GitHub repository](https://github.com/trigo-at/run-command-service).
-
+For more information or to report issues, please visit the [GitHub repository](https://github.com/yourusername/run-command-service).
 
 ## License
 
 Run Command Service is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-
 ### MIT License Summary
 
 - You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software.

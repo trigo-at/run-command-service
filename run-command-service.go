@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 type Config struct {
 	Command         string `yaml:"command"`
 	RunInBackground bool   `yaml:"runInBackground"`
+	RunOnce         bool   `yaml:"runOnce"`
 }
 
 var (
@@ -41,6 +43,12 @@ func main() {
 		os.Exit(0)
 	}
 
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	log.Println("Starting Run Command Service")
 
 	// Load configuration from file
@@ -49,7 +57,7 @@ func main() {
 		// Set default config path to "config.yaml" in the same directory as the executable
 		ex, err := os.Executable()
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("error getting executable path: %v", err)
 		}
 		configPath = filepath.Join(filepath.Dir(ex), "config.yaml")
 		log.Printf("CONFIG_FILE_PATH not set, using default: %s", configPath)
@@ -57,18 +65,22 @@ func main() {
 
 	configFile, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Fatalf("Error reading config file: %v", err)
+		return fmt.Errorf("error reading config file: %v", err)
 	}
 
 	err = yaml.Unmarshal(configFile, &config)
 	if err != nil {
-		log.Fatalf("Error parsing config file: %v", err)
+		return fmt.Errorf("error parsing config file: %v", err)
+	}
+
+	if config.RunOnce && config.RunInBackground {
+		return errors.New("runOnce and runInBackground cannot both be set to true")
 	}
 
 	// Get execute secret from environment variable
 	executeSecret = os.Getenv("EXECUTE_SECRET")
 	if executeSecret == "" {
-		log.Fatal("EXECUTE_SECRET environment variable is not set")
+		return fmt.Errorf("EXECUTE_SECRET environment variable is not set")
 	}
 
 	// Get shell path from environment variable or use default
@@ -87,17 +99,45 @@ func main() {
 
 	// Print the command that will be executed
 	expandedCommand := os.ExpandEnv(config.Command)
-	log.Println("Command that will be executed on /execute:")
+	log.Println("Command that will be executed:")
 	log.Println("----------------------------------------")
 	log.Println(expandedCommand)
 	log.Println("----------------------------------------")
+
+	// If RunOnce is true, execute the command and exit
+	if config.RunOnce {
+		return executeCommand(expandedCommand)
+	}
 
 	// Set up HTTP server
 	http.HandleFunc("/ready", readyHandler)
 	http.HandleFunc("/execute", executeHandler)
 
 	log.Printf("Run Command Service starting on :%s", listenPort)
-	log.Fatal(http.ListenAndServe(":"+listenPort, nil))
+	return http.ListenAndServe(":"+listenPort, nil)
+}
+
+func executeCommand(command string) error {
+	cmd := exec.Command(shellPath, "-c", command)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("error creating stdout pipe: %v", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("error creating stderr pipe: %v", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("error starting command: %v", err)
+	}
+
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr)
+
+	return cmd.Wait()
 }
 
 // printHelp prints documentation about environment variables and config files
