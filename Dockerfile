@@ -19,9 +19,14 @@ COPY *.go ./
 # Run unit tests
 RUN go test -v ./...
 
+# Build arguments for version information
+ARG VERSION=dev
+ARG BUILD_TIME=unknown
+ARG GIT_COMMIT=unknown
+
 # Build the application
 ARG TARGETOS TARGETARCH
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o run-command-service .
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.Version=$VERSION -X main.BuildTime=$BUILD_TIME -X main.GitCommit=$GIT_COMMIT" -o run-command-service .
 
 # Stage 2: Create the final lightweight image
 FROM --platform=$TARGETPLATFORM alpine:latest

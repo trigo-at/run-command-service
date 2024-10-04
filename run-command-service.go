@@ -32,7 +32,27 @@ var (
 	isRunning     bool
 )
 
+func displayBanner() {
+	banner := `
+ ____                ____                                          _   ____                  _          
+|  _ \ _   _ _ __   / ___|___  _ __ ___  _ __ ___   __ _ _ __   __| | / ___|  ___ _ ____   _(_) ___ ___ 
+| |_) | | | | '_ \ | |   / _ \| '_ ' _ \| '_ ' _ \ / _' | '_ \ / _' | \___ \ / _ \ '__\ \ / / |/ __/ _ \
+|  _ <| |_| | | | || |__| (_) | | | | | | | | | | | (_| | | | | (_| |  ___) |  __/ |   \ V /| | (_|  __/
+|_| \_\\__,_|_| |_(_)____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_| |____/ \___|_|    \_/ |_|\___\___|
+                                                                                                        
+by TRIGO GmbH
+`
+	fmt.Println(banner)
+	fmt.Printf("Version:   %s\n", Version)
+	fmt.Printf("Build Time: %s\n", BuildTime)
+	fmt.Printf("Git Commit: %s\n", GitCommit)
+	fmt.Println()
+}
+
 func main() {
+	// Display banner and version information
+	displayBanner()
+
 	// Define help flag
 	help := flag.Bool("help", false, "Print help information")
 	flag.Parse()
