@@ -44,6 +44,6 @@ docker-build:
 	$(DOCKER) build -t $(DOCKER_IMAGE) .
 
 docker-run:
-	$(DOCKER) run -p 8080:8080 -e EXECUTE_SECRET=your_secret_here $(DOCKER_IMAGE)
+	$(DOCKER) run -p 8080:8080 -e RCS_EXECUTE_SECRET=your_secret_here $(DOCKER_IMAGE)
 
 .PHONY: all build test clean run deps build-linux docker-build docker-run

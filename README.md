@@ -67,10 +67,10 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
 
 The service can be configured using the following environment variables:
 
-- `CONFIG_FILE_PATH`: Path to the YAML configuration file (default: `./config.yaml`)
-- `EXECUTE_SECRET`: Secret key for authentication (required)
-- `SHELL_PATH`: Path to the shell used for executing commands (default: `/bin/sh`)
-- `LISTEN_PORT`: Port on which the service listens (default: `8080`)
+- `RCS_CONFIG_FILE_PATH`: Path to the YAML configuration file (default: `./config.yaml`)
+- `RCS_EXECUTE_SECRET`: Secret key for authentication (required)
+- `RCS_SHELL_PATH`: Path to the shell used for executing commands (default: `/bin/sh`)
+- `RCS_LISTEN_PORT`: Port on which the service listens (default: `8080`)
 
 ### Configuration File
 
@@ -99,7 +99,7 @@ Note: `runInBackground` and `runOnce` cannot both be set to `true` as they are m
 
 1. Set the required environment variables:
    ```
-   export EXECUTE_SECRET=your_secret_here
+   export RCS_EXECUTE_SECRET=your_secret_here
    ```
 
 2. Run the service:
@@ -126,7 +126,7 @@ The service will start and display the configured command without executing it.
 
 - **Description**: Executes the configured command
 - **Headers**:
-  - `x-secret`: The secret key for authentication (must match `EXECUTE_SECRET`)
+  - `x-secret`: The secret key for authentication (must match `RCS_EXECUTE_SECRET`)
 - **Response**:
   - For foreground execution (`runInBackground: false`):
     - Status Code: 
@@ -202,8 +202,8 @@ After pulling the image, you can run it with:
 
 ```bash
 docker run -p 8080:8080 \
-  -e EXECUTE_SECRET=your_secret_here \
-  -e CONFIG_FILE_PATH=/app/config.yaml \
+  -e RCS_EXECUTE_SECRET=your_secret_here \
+  -e RCS_CONFIG_FILE_PATH=/app/config.yaml \
   -v /path/to/your/config.yaml:/app/config.yaml \
   ghcr.io/trigo-at/run-command-service:latest
 ```
@@ -212,7 +212,7 @@ Make sure to replace `/path/to/your/config.yaml` with the actual path to your co
 
 ## Security Considerations
 
-- Keep the `EXECUTE_SECRET` confidential and use a strong, unique value.
+- Keep the `RCS_EXECUTE_SECRET` confidential and use a strong, unique value.
 - Be cautious about the commands you configure, as they will be executed with the permissions of the user running the service.
 - Consider running the service in a restricted environment or container for additional security.
 - Use HTTPS in production to encrypt traffic between clients and the service.

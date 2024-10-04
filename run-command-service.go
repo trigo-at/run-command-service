@@ -72,7 +72,7 @@ func run() error {
 	log.Println("Starting Run Command Service")
 
 	// Load configuration from file
-	configPath := os.Getenv("CONFIG_FILE_PATH")
+	configPath := os.Getenv("RCS_CONFIG_FILE_PATH")
 	if configPath == "" {
 		// Set default config path to "config.yaml" in the same directory as the executable
 		ex, err := os.Executable()
@@ -80,7 +80,7 @@ func run() error {
 			return fmt.Errorf("error getting executable path: %v", err)
 		}
 		configPath = filepath.Join(filepath.Dir(ex), "config.yaml")
-		log.Printf("CONFIG_FILE_PATH not set, using default: %s", configPath)
+		log.Printf("RCS_CONFIG_FILE_PATH not set, using default: %s", configPath)
 	}
 
 	configFile, err := os.ReadFile(configPath)
@@ -98,23 +98,23 @@ func run() error {
 	}
 
 	// Get execute secret from environment variable
-	executeSecret = os.Getenv("EXECUTE_SECRET")
+	executeSecret = os.Getenv("RCS_EXECUTE_SECRET")
 	if executeSecret == "" {
-		return fmt.Errorf("EXECUTE_SECRET environment variable is not set")
+		return fmt.Errorf("RCS_EXECUTE_SECRET environment variable is not set")
 	}
 
 	// Get shell path from environment variable or use default
-	shellPath = os.Getenv("SHELL_PATH")
+	shellPath = os.Getenv("RCS_SHELL_PATH")
 	if shellPath == "" {
 		shellPath = "/bin/sh"
-		log.Println("SHELL_PATH not set, defaulting to /bin/sh")
+		log.Println("RCS_SHELL_PATH not set, defaulting to /bin/sh")
 	}
 
 	// Get listen port from environment variable or use default
-	listenPort = os.Getenv("LISTEN_PORT")
+	listenPort = os.Getenv("RCS_LISTEN_PORT")
 	if listenPort == "" {
 		listenPort = "8080"
-		log.Println("LISTEN_PORT not set, defaulting to 8080")
+		log.Println("RCS_LISTEN_PORT not set, defaulting to 8080")
 	}
 
 	// Print the command that will be executed
@@ -168,10 +168,10 @@ Run Command Service
 This service provides an HTTP API to execute predefined shell commands.
 
 Environment Variables:
-  CONFIG_FILE_PATH  : Path to the YAML configuration file (default: ./config.yaml)
-  EXECUTE_SECRET    : Secret key for authentication (required)
-  SHELL_PATH        : Path to the shell used for executing commands (default: /bin/sh)
-  LISTEN_PORT       : Port on which the service listens (default: 8080)
+  RCS_CONFIG_FILE_PATH  : Path to the YAML configuration file (default: ./config.yaml)
+  RCS_EXECUTE_SECRET    : Secret key for authentication (required)
+  RCS_SHELL_PATH        : Path to the shell used for executing commands (default: /bin/sh)
+  RCS_LISTEN_PORT       : Port on which the service listens (default: 8080)
 
 Configuration File (YAML):
   The configuration file should contain a 'command' key with the shell command to be executed.

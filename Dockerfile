@@ -51,6 +51,6 @@ EXPOSE 8080
 CMD ["/usr/local/bin/run-command-service"]
 
 # Set environment variables
-ENV CONFIG_FILE_PATH=/app/config.yaml
-ENV SHELL_PATH=/bin/bash
-ENV LISTEN_PORT=8080
+ENV RCS_CONFIG_FILE_PATH=/app/config.yaml
+ENV RCS_SHELL_PATH=/bin/bash
+ENV RCS_RCS_RCS_LISTEN_PORT=8080

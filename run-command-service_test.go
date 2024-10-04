@@ -189,13 +189,13 @@ func TestRunOnceOption(t *testing.T) {
 				t.Fatalf("Failed to write config file: %v", err)
 			}
 
-			// Set the CONFIG_FILE_PATH environment variable
-			os.Setenv("CONFIG_FILE_PATH", configPath)
-			defer os.Unsetenv("CONFIG_FILE_PATH")
+			// Set the RCS_CONFIG_FILE_PATH environment variable
+			os.Setenv("RCS_CONFIG_FILE_PATH", configPath)
+			defer os.Unsetenv("RCS_CONFIG_FILE_PATH")
 
 			// Set other required environment variables
-			os.Setenv("EXECUTE_SECRET", "test-secret")
-			defer os.Unsetenv("EXECUTE_SECRET")
+			os.Setenv("RCS_EXECUTE_SECRET", "test-secret")
+			defer os.Unsetenv("RCS_EXECUTE_SECRET")
 
 			shellPath = "/bin/sh"
 
@@ -214,16 +214,16 @@ func TestRunOnceOption(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	// Set up test environment
-	os.Setenv("EXECUTE_SECRET", "test-secret")
-	os.Setenv("SHELL_PATH", "/bin/sh")
-	os.Setenv("LISTEN_PORT", "8080")
+	os.Setenv("RCS_EXECUTE_SECRET", "test-secret")
+	os.Setenv("RCS_SHELL_PATH", "/bin/sh")
+	os.Setenv("RCS_LISTEN_PORT", "8080")
 	// Run tests
 	code := m.Run()
 
 	// Clean up
-	os.Unsetenv("EXECUTE_SECRET")
-	os.Unsetenv("SHELL_PATH")
-	os.Unsetenv("LISTEN_PORT")
+	os.Unsetenv("RCS_EXECUTE_SECRET")
+	os.Unsetenv("RCS_SHELL_PATH")
+	os.Unsetenv("RCS_LISTEN_PORT")
 
 	os.Exit(code)
 }
