@@ -52,7 +52,7 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/run-command-service.git
+   git clone https://github.com/trigo-at/run-command-service.git
    cd run-command-service
    ```
 
@@ -151,41 +151,49 @@ The service will start and display the configured command without executing it.
 
 ## Docker Support
 
-You can run the Run Command Service using a pre-built Docker image from the GitHub Container Registry (ghcr.io) or build your own image.
+You can run the Run Command Service using a pre-built Docker image from the GitHub Container Registry (ghcr.io) or build your own image. The service supports multiple architectures, including amd64 and arm64.
 
 ### Building the Docker Image
 
-The Dockerfile uses a multi-stage build process that includes running unit tests:
+The Dockerfile uses a multi-stage build process that includes running unit tests and supports multi-architecture builds:
 
 1. The first stage builds the application and runs unit tests.
 2. The second stage creates a lean production image with only the necessary components.
 
-To build the Docker image:
+To build the Docker image for your current architecture:
 
 ```bash
 docker build -t run-command-service .
 ```
 
+To build for multiple architectures using buildx:
+
+```bash
+docker buildx create --use
+docker buildx build --platform linux/amd64,linux/arm64 -t run-command-service --push .
+```
+
 This process ensures that:
 - Unit tests are run as part of the build process.
 - The final image only contains the production binary, not the test code.
+- Images are built for multiple architectures (amd64 and arm64).
 
 ### Pulling the Pre-built Image
 
 To pull the latest version of the Docker image:
 
 ```bash
-docker pull ghcr.io/yourusername/run-command-service:latest
+docker pull ghcr.io/trigo-at/run-command-service:latest
 ```
 
-Replace `yourusername` with the actual GitHub username or organization where the repository is hosted.
+Docker will automatically pull the correct image for your architecture.
 
 You can also pull a specific version or branch of the service by changing the tag:
 
 ```bash
-docker pull ghcr.io/yourusername/run-command-service:v1.0.0
+docker pull ghcr.io/trigo-at/run-command-service:v1.0.0
 # or
-docker pull ghcr.io/yourusername/run-command-service:main
+docker pull ghcr.io/trigo-at/run-command-service:main
 ```
 
 ### Running the Container
@@ -197,7 +205,7 @@ docker run -p 8080:8080 \
   -e EXECUTE_SECRET=your_secret_here \
   -e CONFIG_FILE_PATH=/app/config.yaml \
   -v /path/to/your/config.yaml:/app/config.yaml \
-  ghcr.io/yourusername/run-command-service:latest
+  ghcr.io/trigo-at/run-command-service:latest
 ```
 
 Make sure to replace `/path/to/your/config.yaml` with the actual path to your configuration file on the host machine.
@@ -237,7 +245,7 @@ A Makefile is provided for common development tasks:
 - Ensure that the configured command in `config.yaml` is valid and can be executed by the specified shell.
 - If both `runInBackground` and `runOnce` are set to `true` in the configuration, the service will return an error as these options are mutually exclusive.
 
-For more information or to report issues, please visit the [GitHub repository](https://github.com/yourusername/run-command-service).
+For more information or to report issues, please visit the [GitHub repository](https://github.com/trigo-at/run-command-service).
 
 ## License
 
