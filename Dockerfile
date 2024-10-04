@@ -1,5 +1,7 @@
+ARG GOLANG_VERSION=1.23-alpine
+
 # Stage 1: Build and test
-FROM --platform=$BUILDPLATFORM golang:1.20-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:${GOLANG_VERSION}} AS builder
 
 # Set the working directory
 WORKDIR /app
@@ -29,8 +31,9 @@ ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.Version=$VERSION -X main.BuildTime=$BUILD_TIME -X main.GitCommit=$GIT_COMMIT" -o run-command-service .
 
+ARG ALPINE_VERSION=3.20
 # Stage 2: Create the final lightweight image
-FROM --platform=$TARGETPLATFORM alpine:latest
+FROM --platform=$TARGETPLATFORM alpine:${ALPINE_VERSION}
 
 # Install bash
 RUN apk add --no-cache bash
