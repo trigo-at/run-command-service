@@ -25,7 +25,8 @@ ARG BUILD_TIME=unknown
 ARG GIT_COMMIT=unknown
 
 # Build the application
-ARG TARGETOS TARGETARCH
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags "-X main.Version=$VERSION -X main.BuildTime=$BUILD_TIME -X main.GitCommit=$GIT_COMMIT" -o run-command-service .
 
 # Stage 2: Create the final lightweight image
@@ -35,21 +36,21 @@ FROM --platform=$TARGETPLATFORM alpine:latest
 RUN apk add --no-cache bash
 
 # Set the working directory
-WORKDIR /root/
+WORKDIR /app/
 
 # Copy only the built binary from the previous stage
-COPY --from=builder /app/run-command-service .
+COPY --from=builder /app/run-command-service /usr/local/bin/run-command-service
 
 # Copy the config file
-COPY config.yaml ./config.yaml
+COPY config.yaml /app/config.yaml
 
 # Expose port 8080 to the outside world (default, can be overridden)
 EXPOSE 8080
 
 # Command to run the executable
-CMD ["./run-command-service"]
+CMD ["/usr/local/bin/run-command-service"]
 
 # Set environment variables
-ENV CONFIG_FILE_PATH=config.yaml
+ENV CONFIG_FILE_PATH=/app/config.yaml
 ENV SHELL_PATH=/bin/bash
 ENV LISTEN_PORT=8080
