@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -100,6 +102,65 @@ func TestExecuteHandler(t *testing.T) {
 	}
 }
 
+func TestExecuteHandlerWithRequestData(t *testing.T) {
+	// Create a temporary file to capture command output
+	tmpFile, err := os.CreateTemp("", "request-data-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	// Set up test configuration that writes the REQUEST_DATA to the temp file
+	config = Config{Command: "echo $REQUEST_DATA > " + tmpFile.Name()}
+	executeSecret = "test-secret"
+	shellPath = "/bin/sh"
+	
+	// Test data
+	testData := `{"test":"data","number":123}`
+	
+	// Create a request with the test data in the body
+	req, err := http.NewRequest("POST", "/execute", bytes.NewBufferString(testData))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("x-secret", "test-secret")
+	
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(executeHandler)
+	
+	// Call the handler
+	handler.ServeHTTP(rr, req)
+	
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+	
+	// Check the response body
+	var response map[string]int
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response["exit_code"] != 0 {
+		t.Errorf("handler returned unexpected exit code: got %v want %v", response["exit_code"], 0)
+	}
+	
+	// Read the temp file to verify the REQUEST_DATA was correctly passed
+	time.Sleep(100 * time.Millisecond) // Small delay to ensure file is written
+	content, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	
+	// Trim any whitespace or newlines
+	actualData := strings.TrimSpace(string(content))
+	if actualData != testData {
+		t.Errorf("REQUEST_DATA not correctly passed to command: got %v want %v", actualData, testData)
+	}
+}
+
 func TestExecuteHandlerWithBackgroundOption(t *testing.T) {
 	// Set up test configuration
 	config = Config{
@@ -148,6 +209,44 @@ func TestExecuteHandlerWithBackgroundOption(t *testing.T) {
 	// Note: In a real test environment, you might want to capture os.Stdout
 	// and check its content instead of this comment.
 	// For simplicity, we're just waiting here.
+}
+
+func TestExecuteCommandWithRequestData(t *testing.T) {
+	// Create a temporary file to capture command output
+	tmpFile, err := os.CreateTemp("", "execute-command-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	// Set shell path for the test
+	shellPath = "/bin/sh"
+	
+	// Test data
+	testData := []byte(`{"test":"value","array":[1,2,3]}`)
+	
+	// Command that writes the REQUEST_DATA to the temp file
+	command := "echo $REQUEST_DATA > " + tmpFile.Name()
+	
+	// Execute the command with the test data
+	err = executeCommand(command, testData)
+	if err != nil {
+		t.Fatalf("executeCommand failed: %v", err)
+	}
+	
+	// Read the temp file to verify the REQUEST_DATA was correctly passed
+	time.Sleep(100 * time.Millisecond) // Small delay to ensure file is written
+	content, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	
+	// Trim any whitespace or newlines
+	actualData := strings.TrimSpace(string(content))
+	expectedData := string(testData)
+	if actualData != expectedData {
+		t.Errorf("REQUEST_DATA not correctly passed to command: got %v want %v", actualData, expectedData)
+	}
 }
 
 func TestRunOnceOption(t *testing.T) {

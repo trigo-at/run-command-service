@@ -126,7 +126,7 @@ func run() error {
 
 	// If RunOnce is true, execute the command and exit
 	if config.RunOnce {
-		return executeCommand(expandedCommand)
+		return executeCommand(expandedCommand, nil)
 	}
 
 	// Set up HTTP server
@@ -137,8 +137,13 @@ func run() error {
 	return http.ListenAndServe(":"+listenPort, nil)
 }
 
-func executeCommand(command string) error {
+func executeCommand(command string, requestData []byte) error {
 	cmd := exec.Command(shellPath, "-c", command)
+
+	// If requestData is provided, set it as an environment variable
+	if requestData != nil {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("REQUEST_DATA=%s", string(requestData)))
+	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -180,6 +185,7 @@ Example config.yaml:
   command: |
     echo "Hello from Run Command Service!"
     echo "Current date: $(date)"
+    echo "Request data: $REQUEST_DATA"
 
 Usage:
   run-command-service [flags]
@@ -191,6 +197,8 @@ Endpoints:
   GET  /ready   : Returns 200 OK if the service is running
   POST /execute : Executes the configured command and returns its exit code
                   (requires 'x-secret' header for authentication)
+                  If the request contains a body, it will be passed to the command
+                  as the REQUEST_DATA environment variable.
 
 For more information, please refer to the README.md file.
 `
@@ -233,11 +241,29 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read the request body if it exists
+	var requestData []byte
+	var err error
+	if r.Body != nil && r.ContentLength > 0 {
+		requestData, err = io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
+			return
+		}
+		
+		log.Println("Received data in request body")
+	}
+
 	// Expand environment variables in the command
 	expandedCommand := os.ExpandEnv(config.Command)
 
 	// Execute the command using the specified shell
 	cmd := exec.Command(shellPath, "-c", expandedCommand)
+
+	// If requestData is provided, set it as an environment variable
+	if requestData != nil {
+		cmd.Env = append(os.Environ(), fmt.Sprintf("REQUEST_DATA=%s", string(requestData)))
+	}
 
 	// Set up pipes for stdout and stderr
 	stdout, err := cmd.StdoutPipe()
