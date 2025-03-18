@@ -252,6 +252,8 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		log.Println("Received data in request body")
+		// Add debug logging for the request data
+		log.Printf("Request data (length: %d): %s", len(requestData), string(requestData))
 	}
 
 	// Expand environment variables in the command
