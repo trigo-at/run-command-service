@@ -18,6 +18,7 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
     - [API Endpoints](#api-endpoints)
       - [GET /ready](#get-ready)
       - [POST /execute](#post-execute)
+    - [Passing Data to Commands](#passing-data-to-commands)
   - [Docker Support](#docker-support)
     - [Building the Docker Image](#building-the-docker-image)
     - [Pulling the Pre-built Image](#pulling-the-pre-built-image)
@@ -35,6 +36,7 @@ Run Command Service is a lightweight, configurable HTTP service that executes pr
 - Execute predefined shell commands via HTTP requests
 - Configurable through environment variables and a YAML configuration file
 - Secure execution with secret-based authentication
+- Pass request body data to commands as environment variables
 - Docker support for easy deployment
 - Customizable shell and listening port
 - Returns command exit codes for easy integration
@@ -82,7 +84,7 @@ Example `config.yaml`:
 command: |
   echo "Hello from Run Command Service!"
   echo "Current date: $(date)"
-  echo "Custom environment variable: $CUSTOM_VAR"
+  echo "Request data: $REQUEST_DATA"
 runInBackground: false
 runOnce: false
 ```
@@ -119,7 +121,7 @@ The service will start and display the configured command without executing it.
   - Content-Type: application/json
   - Body: JSON object indicating the service is running
     ```json
-    {"status": "Run Command Service is running"}
+    {"status": "ok"}
     ```
 
 #### POST /execute
@@ -127,6 +129,7 @@ The service will start and display the configured command without executing it.
 - **Description**: Executes the configured command
 - **Headers**:
   - `x-secret`: The secret key for authentication (must match `RCS_EXECUTE_SECRET`)
+- **Request Body**: Optional. Any data in the request body will be passed to the command as the `REQUEST_DATA` environment variable.
 - **Response**:
   - For foreground execution (`runInBackground: false`):
     - Status Code: 
@@ -148,6 +151,46 @@ The service will start and display the configured command without executing it.
       ```json
       {"status": "job still running in background"}
       ```
+
+### Passing Data to Commands
+
+The service can pass data from the request body to the command being executed. This is useful for webhook integrations, such as receiving alerts from monitoring systems or events from other services.
+
+1. **Send data in the request body**:
+   ```bash
+   curl -X POST -H "x-secret: your_secret_here" \
+     -d '{"key":"value","alert":"high_cpu"}' \
+     http://localhost:8080/execute
+   ```
+
+2. **Access the data in your command**:
+   ```yaml
+   # config.yaml
+   command: |
+     echo "Received data: $REQUEST_DATA"
+     # For JSON data, you can use jq to parse it
+     # echo $REQUEST_DATA | jq -r '.alert'
+   ```
+
+The entire request body is made available to your command as the `REQUEST_DATA` environment variable. If you're working with JSON data, you can use tools like `jq` in your command to parse and extract specific fields.
+
+Example for handling Alertmanager webhooks:
+```yaml
+command: |
+  # Extract alert information
+  ALERT_NAME=$(echo $REQUEST_DATA | jq -r '.commonLabels.alertname')
+  SEVERITY=$(echo $REQUEST_DATA | jq -r '.commonLabels.severity')
+  NAMESPACE=$(echo $REQUEST_DATA | jq -r '.commonLabels.namespace')
+  
+  # Log the alert
+  echo "Received alert: $ALERT_NAME with severity $SEVERITY in namespace $NAMESPACE"
+  
+  # Take action based on the alert
+  if [ "$SEVERITY" = "critical" ]; then
+    echo "Taking emergency action for critical alert!"
+    # Add your critical response commands here
+  fi
+```
 
 ## Docker Support
 
@@ -216,6 +259,7 @@ Make sure to replace `/path/to/your/config.yaml` with the actual path to your co
 - Be cautious about the commands you configure, as they will be executed with the permissions of the user running the service.
 - Consider running the service in a restricted environment or container for additional security.
 - Use HTTPS in production to encrypt traffic between clients and the service.
+- Be aware that any data passed in the request body will be available to the command as an environment variable.
 
 ## Development
 
@@ -244,6 +288,7 @@ A Makefile is provided for common development tasks:
 - Check the logs for any error messages or unexpected behavior.
 - Ensure that the configured command in `config.yaml` is valid and can be executed by the specified shell.
 - If both `runInBackground` and `runOnce` are set to `true` in the configuration, the service will return an error as these options are mutually exclusive.
+- If your command isn't receiving the request body data, make sure you're accessing it using the `$REQUEST_DATA` environment variable.
 
 For more information or to report issues, please visit the [GitHub repository](https://github.com/trigo-at/run-command-service).
 
