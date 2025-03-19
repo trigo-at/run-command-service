@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"log"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -49,6 +50,7 @@ func TestExecuteHandler(t *testing.T) {
 	// Set up test configuration
 	config = Config{Command: "echo 'test'"}
 	executeSecret = "test-secret"
+	secretHeader = "x-secret"
 	shellPath = "/bin/sh"
 
 	tests := []struct {
@@ -109,48 +111,49 @@ func TestExecuteHandlerWithRequestData(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmpFile.Name())
-	
+
 	// Set up test configuration with a simple command
 	config = Config{Command: "printenv REQUEST_DATA > " + tmpFile.Name()}
 	executeSecret = "test-secret"
+	secretHeader = "x-secret"
 	shellPath = "/bin/sh"
-	
+
 	// Test data
 	testData := `{"test":"data","number":123}`
-	
+
 	// Create a request with the test data in the body
 	req, err := http.NewRequest("POST", "/execute", bytes.NewBufferString(testData))
 	if err != nil {
 		t.Fatal(err)
 	}
 	req.Header.Set("x-secret", "test-secret")
-	
+
 	// Create a ResponseRecorder to record the response
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(executeHandler)
-	
+
 	// Call the handler
 	handler.ServeHTTP(rr, req)
-	
+
 	// Log the response for debugging
 	log.Printf("Response status: %d", rr.Code)
 	log.Printf("Response body: %s", rr.Body.String())
-	
+
 	// Wait for the command to complete
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// Read the temp file to verify the REQUEST_DATA was correctly passed
 	content, err := os.ReadFile(tmpFile.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	// Log the file content
 	log.Printf("File content (length: %d): %s", len(content), string(content))
-	
+
 	// Trim any whitespace or newlines
 	actualData := strings.TrimSpace(string(content))
-	
+
 	if actualData != testData {
 		t.Errorf("REQUEST_DATA not correctly passed to command: got %q want %q", actualData, testData)
 	}
@@ -163,6 +166,7 @@ func TestExecuteHandlerWithBackgroundOption(t *testing.T) {
 		RunInBackground: true,
 	}
 	executeSecret = "test-secret"
+	secretHeader = "x-secret"
 	shellPath = "/bin/sh"
 
 	req, err := http.NewRequest("POST", "/execute", nil)
@@ -213,22 +217,22 @@ func TestExecuteCommandWithRequestData(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmpFile.Name())
-	
+
 	// Set shell path for the test
 	shellPath = "/bin/sh"
-	
+
 	// Test data
 	testData := []byte(`{"test":"value","array":[1,2,3]}`)
-	
+
 	// Command that writes the REQUEST_DATA to the temp file
 	command := "echo $REQUEST_DATA > " + tmpFile.Name()
-	
+
 	// Execute the command with the test data
 	err = executeCommand(command, testData)
 	if err != nil {
 		t.Fatalf("executeCommand failed: %v", err)
 	}
-	
+
 	// Read the temp file to verify the REQUEST_DATA was correctly passed
 	time.Sleep(100 * time.Millisecond) // Small delay to ensure file is written
 	content, err := os.ReadFile(tmpFile.Name())
@@ -304,6 +308,67 @@ func TestRunOnceOption(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExecuteHandlerWithCustomHeaderName(t *testing.T) {
+	// Save original values to restore later
+	originalSecretHeader := secretHeader
+	originalExecuteSecret := executeSecret
+
+	// Set up test configuration
+	config = Config{Command: "echo 'test'"}
+	executeSecret = "custom-secret-value"
+	secretHeader = "custom-auth-header" // Set custom header name
+	shellPath = "/bin/sh"
+
+	// Create a request with the custom header
+	req, err := http.NewRequest("POST", "/execute", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("custom-auth-header", "custom-secret-value") // Use custom header name
+
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(executeHandler)
+
+	// Call the handler
+	handler.ServeHTTP(rr, req)
+
+	// Check the status code
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+
+	// Check the response body
+	var response map[string]int
+	err = json.Unmarshal(rr.Body.Bytes(), &response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response["exit_code"] != 0 {
+		t.Errorf("handler returned unexpected exit code: got %v want %v", response["exit_code"], 0)
+	}
+
+	// Test with incorrect header name (should fail)
+	req, err = http.NewRequest("POST", "/execute", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("x-secret", "custom-secret-value") // Use default header name instead of custom
+
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	// Should return unauthorized
+	if status := rr.Code; status != http.StatusUnauthorized {
+		t.Errorf("handler should return unauthorized with wrong header name: got %v want %v",
+			status, http.StatusUnauthorized)
+	}
+
+	// Restore original values
+	secretHeader = originalSecretHeader
+	executeSecret = originalExecuteSecret
 }
 
 func TestMain(m *testing.M) {

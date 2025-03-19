@@ -26,6 +26,7 @@ type Config struct {
 var (
 	config        Config
 	executeSecret string
+	secretHeader  string
 	shellPath     string
 	listenPort    string
 	mu            sync.Mutex
@@ -103,6 +104,13 @@ func run() error {
 		return fmt.Errorf("RCS_EXECUTE_SECRET environment variable is not set")
 	}
 
+	// Get secret header name from environment variable or use default
+	secretHeader = os.Getenv("RCS_SECRET_HEADER")
+	if secretHeader == "" {
+		secretHeader = "x-secret"
+		log.Printf("RCS_SECRET_HEADER not set, defaulting to '%s'", secretHeader)
+	}
+
 	// Get shell path from environment variable or use default
 	shellPath = os.Getenv("RCS_SHELL_PATH")
 	if shellPath == "" {
@@ -175,6 +183,7 @@ This service provides an HTTP API to execute predefined shell commands.
 Environment Variables:
   RCS_CONFIG_FILE_PATH  : Path to the YAML configuration file (default: ./config.yaml)
   RCS_EXECUTE_SECRET    : Secret key for authentication (required)
+  RCS_SECRET_HEADER     : HTTP header name for the secret (default: x-secret)
   RCS_SHELL_PATH        : Path to the shell used for executing commands (default: /bin/sh)
   RCS_LISTEN_PORT       : Port on which the service listens (default: 8080)
 
@@ -196,7 +205,7 @@ Flags:
 Endpoints:
   GET  /ready   : Returns 200 OK if the service is running
   POST /execute : Executes the configured command and returns its exit code
-                  (requires 'x-secret' header for authentication)
+                  (requires authentication header for authentication)
                   If the request contains a body, it will be passed to the command
                   as the REQUEST_DATA environment variable.
 
@@ -224,8 +233,8 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check for x-secret header
-	secret := r.Header.Get("x-secret")
+	// Check for the secret header using the configurable header name
+	secret := r.Header.Get(secretHeader)
 	if secret != executeSecret {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -250,10 +259,8 @@ func executeHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error reading request body: %v", err), http.StatusBadRequest)
 			return
 		}
-		
+
 		log.Println("Received data in request body")
-		// Add debug logging for the request data
-		log.Printf("Request data (length: %d): %s", len(requestData), string(requestData))
 	}
 
 	// Expand environment variables in the command
